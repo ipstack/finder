@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/packagist/l/ipstack/finder.svg?style=flat-square)](https://github.com/ipstack/finder/blob/master/LICENSE)
 [![PHP](https://img.shields.io/packagist/php-v/ipstack/finder.svg?style=flat-square)](https://php.net)
 
-# IP Stack Finder
+# IPStack Finder
 ![Logo](https://github.com/ipstack/finder/wiki/img/logo.png)
 
 > IP Stack. Define data by IP Address.
