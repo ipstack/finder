@@ -8,7 +8,7 @@
 
 | Q                | A
 | ---------------- | ---
-| Ipstack Finder version  | 1.0.0
+| Finder version  | 1.0.0
 | PHP version      | 
 | Operating system |
 
