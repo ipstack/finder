@@ -1,6 +1,7 @@
 {
   "name": "ipstack/finder",
   "version": "1.0.0",
+  "time": "2018-01-14",
   "type": "library",
   "description": "Define data by IP Address",
   "keywords": ["iptool", "ipstack", "ipstack-finder", "ip", "geo", "geoip", "info", "data", "ip-database", "search", "ip-search"],
@@ -17,8 +18,8 @@
   },
   "suggest": {
     "ipstack/wizard": "Need for create your database",
-    "ipstack/db-v1-geolite2-country": "If you hate use country geobase of MaxMind (GeoLite2 Country)",
-    "ipstack/db-v1-geolite2-city": "If you hate use city geobase of MaxMind (GeoLite2 City)"
+    "ipstack/db-geolite2-country": "If you hate use country geobase of MaxMind (GeoLite2 Country)",
+    "ipstack/db-geolite2-city": "If you hate use city geobase of MaxMind (GeoLite2 City)"
   },
   "autoload": {
     "psr-4": {
