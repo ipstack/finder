@@ -18,8 +18,8 @@
   },
   "suggest": {
     "ipstack/wizard": "Need for create your database",
-    "ipstack/db-geolite2-country-en": "If you hate use country geobase of MaxMind (GeoLite2 Country)",
-    "ipstack/db-geolite2-city-en": "If you hate use city geobase of MaxMind (GeoLite2 City)"
+    "ipstack/db-geolite2-country-en": "If you hate use country geobase of MaxMind (GeoLite2 Country EN)",
+    "ipstack/db-geolite2-city-en": "If you hate use city geobase of MaxMind (GeoLite2 City EN)"
   },
   "autoload": {
     "psr-4": {
