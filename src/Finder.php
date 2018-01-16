@@ -5,32 +5,18 @@ namespace Ipstack\Finder;
 /**
  * Class Finder
  *
- * @property boolean  $isCorrect
- * @property array    $errors
+ * @const int FORMAT_VERSION
  * @property array    $meta
  * @property integer  $fileSize
  * @property resource $db
  */
 class Finder
 {
-    /**
-     * Parser version.
-     */
-    const VERSION = 1;
 
     /**
-     * Correct read database flag.
-     *
-     * @var boolean
+     * @const int Parser version.
      */
-    protected $isCorrect=false;
-
-    /**
-     * Errors.
-     *
-     * @var array
-     */
-    protected $errors=array();
+    const FORMAT_VERSION = 2;
 
     /**
      * Metadata.
@@ -42,7 +28,7 @@ class Finder
     /**
      * Size of database file.
      *
-     * @var integer
+     * @var int
      */
     protected $fileSize;
 
@@ -57,74 +43,70 @@ class Finder
      * Iptool constructor.
      *
      * @param string $databaseFile
+     * @throws \InvalidArgumentException
      */
     public function __construct($databaseFile)
     {
         if (!is_readable($databaseFile)) {
-            $this->errors[] = 'can\'t read file '.$databaseFile ;
-            return;
-        }
-        $this->db = fopen($databaseFile, 'rb');
-        $d = fread($this->db, 4);
-        $dit = substr($d,0,3);
-        $letter = substr($d,3,1);
-        if ($dit !== 'DIT' || !in_array($letter,array('C','I','L'))) {
             fclose($this->db);
-            $this->errors[] = 'file '.$databaseFile.' is not Ddrv\\Iptool database' ;
-            return;
-        }
-        $len = $letter=='C'?1:4;
-        $tmp = unpack($letter.'headerLen', fread($this->db, $len));
-        $headerLen = $tmp['headerLen'];
-        $header = fread($this->db,$headerLen);
-        $offset = 0;
-        $tmp = unpack('Cver/Ccount/IformatLen',substr($header,$offset,6));
-        $offset += 6;
-        $this->meta = [
-            'dit' => $dit,
-            'version' => $tmp['ver'],
-        ];
-        if ($this->meta['version'] !== self::VERSION) {
-            fclose($this->db);
-            $this->errors[] = 'file '.$databaseFile.' is not database version '.self::VERSION;
-            return;
-        }
-        $registersCount = $tmp['count'];
-        $registersFormatLen = $tmp['formatLen'];
-        $tmp = unpack('A*format',substr($header,$offset,$registersFormatLen));
-        $offset += $registersFormatLen;
-
-        $registersFormat = $tmp['format'];
-        $tmp = unpack('IregistersDefineLen',substr($header,$offset,4));
-        $offset += 4;
-        $registersDefineLen = $tmp['registersDefineLen'];
-
-        for($i=0;$i<$registersCount;$i++) {
-            $tmp = unpack($registersFormat,substr($header,$offset,$registersDefineLen));
-            $this->meta['registers'][$tmp['name']] = array(
-                'pack' => $tmp['pack'],
-                'len' => $tmp['len'],
-                'items' => $tmp['items'],
-            );
-            $offset += $registersDefineLen;
-        }
-        $tmp = unpack($registersFormat,substr($header,$offset,$registersDefineLen));
-        $this->meta['networks'] = array(
-            'pack' => $tmp['pack'],
-            'len' => $tmp['len'],
-            'items' => $tmp['items'],
-        );
-        $offset += $registersDefineLen;
-        $this->meta['index'] = array_values(unpack('I256',substr($header,$offset,1024)));
-        $offset = strlen($header)+$len+4;
-        $this->meta['networks']['offset'] = $offset;
-        $offset += ($this->meta['networks']['len'] * $this->meta['networks']['items']);
-        foreach ($this->meta['registers'] as $r=>$register) {
-            $this->meta['registers'][$r]['offset'] = $offset;
-            $offset += ($register['len'] * ($register['items']+1));
+            throw new \InvalidArgumentException('can not read database file');
         }
         $this->fileSize = filesize($databaseFile);
-        $this->isCorrect = true;
+        $this->db = fopen($databaseFile, 'rb');
+
+        $meta = unpack('A3control/Ssize', fread($this->db, 5));
+        if ($meta['control'] !== 'ISD') {
+            fclose($this->db);
+            throw new \InvalidArgumentException('file is not IPStack database');
+        }
+
+        $header = fread($this->db, $meta['size']);
+        $offset = 0;
+        $meta += unpack('Cversion/CRGC/SRGF/SRGD/CRLC/CRLF/SRLD', substr($header,$offset,10));
+        if ($meta['version'] !== self::FORMAT_VERSION) {
+            fclose($this->db);
+            throw new \InvalidArgumentException('file is not IPStack database version '.self::FORMAT_VERSION);
+        }
+
+        $offset += 10;
+        $unpack = 'A'.$meta['RLF'].'RLUF/A'.$meta['RGF'].'RGMUF';
+        $size = $meta['RLF']+$meta['RGF'];
+        $meta += unpack($unpack, substr($header, $offset, $size));
+
+        $offset += $size;
+        for ($i=0;$i<$meta['RLC'];$i++) {
+            $this->meta['relations'][] = unpack(
+                $meta['RLUF'],
+                substr($header, $offset, $meta['RLD'])
+            );
+            $offset += $meta['RLD'];
+        }
+        for ($i=0;$i<$meta['RGC'];$i++) {
+            $definion = unpack(
+                $meta['RGMUF'],
+                substr($header, $offset, $meta['RGD'])
+            );
+            $id = $definion['name'];
+            unset($definion['name']);
+            $this->meta['registers'][$id] = $definion;
+            $offset += $meta['RGD'];
+        }
+        $definion = unpack(
+            $meta['RGMUF'],
+            substr($header, $offset, $meta['RGD'])
+        );
+        unset($definion['name']);
+        $this->meta['networks'] = $definion;
+        $offset += $meta['RGD'];
+        $this->meta['index'] = array_values(unpack('I*',substr($header, $offset)));
+        $offset += 1029;
+        $this->meta['networks']['offset'] = $offset;
+        $offset += $this->meta['networks']['items']*$this->meta['networks']['len'];
+
+        foreach ($this->meta['registers'] as $id=>$register) {
+            $this->meta['registers'][$id]['offset'] = $offset;
+            $offset += ($register['items']+1)*$register['len'];
+        }
     }
 
     public function __destruct()
@@ -136,7 +118,6 @@ class Finder
     public function find($ip)
     {
         if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
-        if (!$this->isCorrect) return false;
         $data = array();
         $octet = (int)$ip;
         $long = pack('N',ip2long($ip));
@@ -197,11 +178,6 @@ class Finder
         fseek($this->db,$seek);
         $data = unpack($this->meta['registers'][$register]['pack'],fread($this->db,$this->meta['registers'][$register]['len']));
         return $data;
-    }
-
-    public function getErrors()
-    {
-        return $this->errors;
     }
 
     public function about()
