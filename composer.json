@@ -17,7 +17,7 @@
     "php":">=5.3"
   },
   "suggest": {
-    "ipstack/wizard": "Need for create your database",
+    "ipstack/wizard:~2": "Need for create your database",
   },
   "autoload": {
     "psr-4": {
