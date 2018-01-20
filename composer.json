@@ -1,7 +1,7 @@
 {
   "name": "ipstack/finder",
   "version": "2.0.0",
-  "time": "2018-01-20 05:07:32",
+  "time": "2018-01-20 05:17:54",
   "type": "library",
   "description": "Define data by IP Address",
   "keywords": ["iptool", "ipstack", "ipstack-finder", "ip", "geo", "geoip", "info", "data", "ip-database", "search", "ip-search"],
@@ -17,7 +17,7 @@
     "php":">=5.3"
   },
   "suggest": {
-    "ipstack/wizard:~2": "Need for create your database",
+    "ipstack/wizard:~2": "Need for create your database"
   },
   "autoload": {
     "psr-4": {
