@@ -6,10 +6,10 @@
 
 ### Additional info
 
-| Q                | A
-| ---------------- | ---
-| Finder version  | 1.0.0
-| PHP version      | 
-| Operating system |
+|Q|A|
+|---|---|
+|Finder version|2.0.0|
+|PHP version|?| 
+|Operating system|?|
 
 ### Add your binary database file in attacnments

@@ -75,10 +75,11 @@ class Finder
 
         $offset += $size;
         for ($i=0;$i<$meta['RLC'];$i++) {
-            $this->meta['relations'][] = unpack(
+            $relation = unpack(
                 $meta['RLUF'],
                 substr($header, $offset, $meta['RLD'])
             );
+            $this->meta['relations'][$relation['p']][$relation['f']] = $relation['c'];
             $offset += $meta['RLD'];
         }
         for ($i=0;$i<$meta['RGC'];$i++) {
@@ -167,6 +168,13 @@ class Finder
         $registers = unpack($this->meta['networks']['pack'],substr($block,4));
         foreach ($registers as $register=>$item) {
             $data['data'][$register] = $this->getRegisterRecord($register,$item);
+        }
+        foreach ($this->meta['relations'] as $parent=>$relations) {
+            foreach ($relations as $field=>$child) {
+                if (isset($data['data'][$parent][$field])) {
+                    $data['data'][$child] = $this->getRegisterRecord($child, $data['data'][$parent][$field]);
+                }
+            }
         }
         return $data;
     }
