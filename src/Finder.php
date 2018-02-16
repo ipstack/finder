@@ -40,27 +40,47 @@ class Finder
     protected $db;
 
     /**
+     * @var string Full data of database in memory
+     */
+    private $fulldata;
+
+    /**
+     * Mode in-memory is enabled or not
+     *
+     * @var bool
+     */
+    private $inMemory;
+
+    /**
      * Iptool constructor.
      *
      * @param string $databaseFile
+     * @param bool   $inMemory
      * @throws \InvalidArgumentException
      */
-    public function __construct($databaseFile)
+    public function __construct($databaseFile, $inMemory = false)
     {
         if (!is_readable($databaseFile)) {
             fclose($this->db);
             throw new \InvalidArgumentException('can not read database file');
         }
+        $this->inMemory = $inMemory;
         $this->fileSize = filesize($databaseFile);
         $this->db = fopen($databaseFile, 'rb');
 
-        $meta = unpack('A3control/Ssize', fread($this->db, 5));
+        if ($this->inMemory) {
+            $this->fulldata = $this->readFile(0, $this->fileSize);
+            fclose($this->db);
+            $this->db = null;
+        }
+
+        $meta = unpack('A3control/Ssize', $this->read(0, 5));
         if ($meta['control'] !== 'ISD') {
             fclose($this->db);
             throw new \InvalidArgumentException('file is not IPStack database');
         }
 
-        $header = fread($this->db, $meta['size']);
+        $header = $this->read(5, $meta['size']);
         $offset = 0;
         $meta += unpack('Cversion/CRGC/SRGF/SRGD/CRLC/CRLF/SRLD', substr($header,$offset,10));
         if ($meta['version'] !== self::FORMAT_VERSION) {
@@ -139,8 +159,7 @@ class Finder
         }
         $blockCount = $stop-$start;
         $seek = $this->meta['networks']['offset']+($start*$this->meta['networks']['len']);
-        fseek($this->db,$seek);
-        $blocks = fread($this->db,$blockCount*$this->meta['networks']['len']);
+        $blocks = $this->read($seek,$blockCount*$this->meta['networks']['len']);
         $start = 0;
         $stop = $blockCount;
         do {
@@ -184,8 +203,7 @@ class Finder
     {
         if ($item > $this->meta['registers'][$register]['items']) $item = 0;
         $seek = $this->meta['registers'][$register]['offset']+($item * $this->meta['registers'][$register]['len']);
-        fseek($this->db,$seek);
-        $data = unpack($this->meta['registers'][$register]['pack'],fread($this->db,$this->meta['registers'][$register]['len']));
+        $data = unpack($this->meta['registers'][$register]['pack'], $this->read($seek, $this->meta['registers'][$register]['len']));
         return $data;
     }
 
@@ -205,8 +223,7 @@ class Finder
             $about['networks']['data'][$r] = array_keys(unpack($register['pack'],str_pad('',$register['len'],' ')));
         }
         $offset = $register['offset'] + ($register['len'] * ($register['items']+1));
-        fseek($this->db,$offset);
-        $info = fread($this->db,$this->fileSize-$offset);
+        $info = $this->read($offset,$this->fileSize - $offset);
         $tmp = unpack('N1created/A128author/A*license', $info);
         $about = array_replace($about, $tmp);
         return $about;
@@ -223,10 +240,46 @@ class Finder
         if (!isset($this->meta['registers'][$register])) return array();
         $result = array();
         $seek = $this->meta['registers'][$register]['offset']+$this->meta['registers'][$register]['len'];
-        fseek($this->db,$seek);
+        if (!$this->inMemory) {
+            fseek($this->db,$seek);
+        }
         for($i = 1;$i<=$this->meta['registers'][$register]['items'];$i++) {
-            $result[$i] = unpack($this->meta['registers'][$register]['pack'],fread($this->db,$this->meta['registers'][$register]['len']));
+            $length = $this->meta['registers'][$register]['len'];
+            if ($this->inMemory) {
+                $data = $this->readMemory($seek, $length);
+                $seek += $length;
+            } else {
+                $data = $this->readFile(null, $length);//we do not use $this->read to not call fseek in cycle
+            }
+            $result[$i] = unpack($this->meta['registers'][$register]['pack'], $data);
         }
         return $result;
+    }
+
+    private function read($offset, $length)
+    {
+        if ($this->inMemory) {
+            return $this->readMemory($offset, $length);
+        }
+
+        return $this->readFile($offset, $length);
+    }
+
+    private function readFile($offset, $length)
+    {
+        if ($offset !== null) {
+            fseek($this->db, $offset);
+        }
+
+        return fread($this->db, $length);
+    }
+
+    private function readMemory($offset, $length)
+    {
+        if ($this->fulldata === null || $this->fulldata === '') {
+            throw new \RuntimeException('Database not loaded');
+        }
+
+        return substr($this->fulldata, $offset, $length);
     }
 }
