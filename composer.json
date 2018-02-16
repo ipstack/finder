@@ -1,6 +1,6 @@
 {
   "name": "ipstack/finder",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "library",
   "description": "Define data by IP Address",
   "keywords": ["iptool", "ipstack", "ipstack-finder", "ip", "geo", "geoip", "info", "data", "ip-database", "search", "ip-search"],
