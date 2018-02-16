@@ -73,6 +73,7 @@ class Finder
         $size = $meta['RLF']+$meta['RGF'];
         $meta += unpack($unpack, substr($header, $offset, $size));
 
+        $this->meta['relations'] = array();
         $offset += $size;
         for ($i=0;$i<$meta['RLC'];$i++) {
             $relation = unpack(
